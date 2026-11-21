@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>ROADGO 3D NAVI</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bg:#101820;--panel:#172630;--line:#344956;--mint:#49e0b3;--muted:#afc0ca;--yellow:#ffd166}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#071018;color:#f4f8fa;font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif}
+.app{position:absolute;inset:0;width:100vw;height:100dvh;background:var(--bg);display:flex;flex-direction:column}
+@media(orientation:portrait){.app{width:100dvh;height:100vw;left:100vw;top:0;transform:rotate(90deg);transform-origin:top left}}
+header{display:none}.clock{font-size:17px;font-weight:850;letter-spacing:.06em;color:#eaf5f7;font-variant-numeric:tabular-nums}
+.logo{font-size:18px;font-weight:950;letter-spacing:.12em}.logo b{color:var(--mint)}.header-right{display:flex;gap:12px;align-items:center;font-size:11px;color:var(--muted)}.pill{background:#263a46;padding:5px 9px;border-radius:20px}
+main{position:relative;flex:1;min-height:0;overflow:hidden}
+.map-area{position:absolute;inset:0;min-width:0;min-height:0;background:#cbd8ce}#map{width:100%;height:100%;background:#dce7dc;touch-action:none;cursor:grab}#map:active{cursor:grabbing}.leaflet-grab{cursor:grab!important}.leaflet-dragging .leaflet-grab{cursor:grabbing!important}
+.side{position:absolute;z-index:650;right:8px;top:8px;bottom:8px;width:min(310px,88vw);background:#111d26;border:1px solid var(--line);border-radius:12px;padding:10px;display:none;flex-direction:column;gap:8px;min-height:0;overflow:auto;box-shadow:0 8px 28px #0008}.side.open{display:flex}
+.bottom-nav{height:78px;flex:none;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:7px 14px;background:#101c25;border-top:1px solid var(--line);z-index:700}
+.bottom-left{display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:190px;max-width:42%;flex:1}.bottom-left .clock{font-size:18px;line-height:22px}.bottom-volume{display:flex;align-items:center;gap:7px;color:#d8e5eb;font-size:12px}.bottom-volume input{flex:1;min-width:60px;max-width:180px;margin:0}.roadgo-menu-btn{width:76px;height:60px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:#263a46;border:1px solid #526775;color:#fff;border-radius:12px}.roadgo-menu-btn .roadgo-mark{font-size:17px;font-weight:1000;letter-spacing:.04em}.roadgo-menu-btn .roadgo-mark b{color:var(--mint)}.roadgo-menu-btn small{font-size:9px;color:#d2e1e8}.roadgo-menu-btn.active{border-color:var(--mint);background:#194b40}
+.menu-panel{position:absolute;z-index:800;right:10px;bottom:88px;width:min(310px,88vw);background:#111d26;border:1px solid #405461;border-radius:12px;padding:14px;box-shadow:0 8px 28px #0009;display:none;gap:10px}.menu-panel.open{display:flex;flex-direction:column}.menu-panel h3{font-size:14px;margin:0}.menu-panel p{font-size:11px;color:var(--muted);margin:0;line-height:1.5}.menu-panel .panel-actions{display:flex;gap:7px}.menu-panel .panel-actions button{flex:1}.roadgo-menu-panel button{width:100%;text-align:left;padding:12px 13px}.volume-row{display:flex;align-items:center;gap:8px}.volume-row input{flex:1}.danger{background:#d94b42;color:white}
+.searchline{display:flex;gap:5px}.searchline input{min-width:0;flex:1}
+input{background:#0b151d;border:1px solid #405461;color:#fff;padding:9px 10px;border-radius:8px;font:inherit;font-size:12px;outline:none}input:focus{border-color:var(--mint)}
+button{border:0;border-radius:8px;background:var(--mint);color:#062016;font:inherit;font-weight:850;font-size:12px;padding:9px 11px;cursor:pointer}button.secondary{background:#304451;color:white}button:disabled{opacity:.4}
+.section{font-size:11px;font-weight:850;color:var(--muted);letter-spacing:.06em;margin-top:2px}
+.route-list{display:grid;gap:5px}.route{background:#1b2b35;border:1px solid #405461;color:white;text-align:left;display:flex;align-items:center;justify-content:space-between;padding:8px 9px}.route.selected{border:2px solid var(--mint);background:#19382f}.route strong{font-size:12px;display:block}.route small{font-size:10px;color:var(--muted);display:block;margin-top:2px}.route em{font-style:normal;font-size:11px;color:var(--yellow);white-space:nowrap}
+.info{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.metric{background:#1b2a34;border:1px solid #354956;border-radius:8px;text-align:center;padding:7px 2px}.metric strong{font-size:18px;display:block}.metric small{font-size:9px;color:var(--muted)}
+.speed{background:#1b2a34;border:1px solid #354956;border-radius:8px;padding:8px}.limit-card{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#142b35;border:1px solid #3b6472;border-radius:8px;padding:9px}.limit-card small{display:block;color:var(--muted);font-size:10px}.limit-card strong{font-size:19px}.limit-state{font-size:11px;color:#b9d8e2}.speed-alert{display:none;position:absolute;z-index:680;top:58px;left:50%;transform:translateX(-50%);background:#a92828;color:white;border:2px solid #ffb0a8;border-radius:12px;padding:10px 16px;font-weight:900;box-shadow:0 5px 18px #0008;white-space:nowrap}.speed-alert.show{display:block}.speedtop{display:flex;justify-content:space-between;color:var(--muted);font-size:10px}.speedtop b{font-size:15px;color:white}input[type=range]{width:100%;padding:0;accent-color:var(--mint);margin:8px 0 0}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.actions button{padding:10px 4px}
+.status{background:#0b151d;border:1px solid #2b3d49;border-radius:8px;padding:8px;color:#c6d4dc;font-size:10px;line-height:1.4;min-height:37px}
+.progress{height:5px;border-radius:8px;background:#344956;overflow:hidden}.progress div{height:100%;width:0;background:var(--mint)}
+.nav-banner{position:absolute;left:10px;top:10px;z-index:500;background:#101f29e8;color:white;border-radius:10px;padding:7px 10px;display:flex;align-items:center;gap:8px;min-width:190px;max-width:min(340px,58%);box-shadow:0 3px 14px #0005;pointer-events:none}.big-arrow{font-size:25px;color:var(--mint);font-weight:900;line-height:1}.nav-title{font-size:12px;font-weight:900;line-height:1.25}.nav-sub{font-size:9px;color:#c2d0d8;margin-top:2px;line-height:1.25}
+.big-arrow{font-size:34px;color:var(--mint);font-weight:900;line-height:1}.nav-title{font-size:15px;font-weight:900}.nav-sub{font-size:11px;color:#c2d0d8;margin-top:3px}
+.mock-drive-fab{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:620;min-width:140px;padding:12px 18px;border:2px solid #fff;background:#168b70;color:#fff;border-radius:24px;box-shadow:0 4px 14px #0007;font-size:13px}.mock-drive-fab:disabled{opacity:.55}.map-tools{position:absolute;right:12px;bottom:14px;z-index:500;display:grid;gap:5px}.map-tools button{width:36px;height:36px;padding:0;background:#fff;color:#162832;font-size:19px;box-shadow:0 2px 7px #0003}
+.boot{position:absolute;inset:0;z-index:2000;background:radial-gradient(ellipse at center,#203d4b,#07121a 70%);display:grid;place-items:center;text-align:center;transition:opacity .45s}.boot.hide{opacity:0;pointer-events:none}.boot-logo{font-size:clamp(36px,7vw,70px);font-weight:1000;letter-spacing:.14em}.boot-logo b{color:var(--mint)}.boot-sub{font-size:11px;letter-spacing:.22em;color:#a8bac4}.boot-bar{width:260px;max-width:60vw;height:3px;background:#30434f;margin:20px auto 10px;border-radius:9px;overflow:hidden}.boot-bar i{display:block;height:100%;width:0;background:var(--mint);animation:load 2.3s ease forwards}@keyframes load{to{width:100%}}
+.leaflet-control-attribution{font-size:8px!important}
+@media(max-height:430px){.side{padding:7px;gap:5px}.nav-banner{top:8px;left:8px}.metric{padding:4px}.metric strong{font-size:15px}.bottom-nav{height:64px;padding:4px 10px}.bottom-left .clock{font-size:15px}.roadgo-menu-btn{height:50px;width:68px}.menu-panel{bottom:72px}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<main>
+<section class="map-area">
+<div id="map"></div>
+<div class="nav-banner"><div class="big-arrow" id="maneuverArrow">➤</div><div><div class="nav-title" id="maneuverText">지도 준비 중...</div><div class="nav-sub" id="maneuverSub">잠시만 기다려 주세요</div></div></div>
+<div class="speed-alert" id="speedAlert">⚠️ 제한속도 초과</div><button id="mockDriveBtn" class="mock-drive-fab" style="display:none">🚗 모의주행 시작</button><div class="map-tools"><button id="zoomIn">＋</button><button id="zoomOut">－</button><button id="followBtn">⌖</button></div>
+</section>
+<aside class="side" id="sidePanel">
+<div class="section">출발지</div><div class="searchline"><input id="origin" value="현재 위치" placeholder="출발지 검색"><button class="secondary" id="gpsBtn">GPS</button></div>
+<div class="section">목적지 검색</div><div class="searchline"><input id="destination" placeholder="장소·주소 검색"><button id="searchBtn">검색</button></div>
+<div class="section">추천 경로 3개</div><div class="route-list" id="routeList"><div class="status">목적지를 검색하면 경로가 표시됩니다.</div></div>
+<div class="section">주행 정보</div><div class="info"><div class="metric"><strong id="speedVal">0</strong><small>km/h</small></div><div class="metric"><strong id="distanceVal">--</strong><small>남은 거리</small></div><div class="metric"><strong id="etaVal">--</strong><small>도착 예상</small></div></div>
+<div class="limit-card"><div><small>현재 도로 제한속도</small><strong id="speedLimitVal">--</strong></div><span class="limit-state" id="speedLimitState">경로 선택 후 확인</span></div><div class="speed"><div class="speedtop"><span>모의 주행 속도</span><b><span id="speedSetting">60</span> km/h</b></div><input id="speedSlider" type="range" min="10" max="160" step="5" value="60"></div>
+<div class="progress"><div id="progressFill"></div></div>
+<div class="actions"><button id="startBtn" disabled>▶ 안내 시작</button><button class="secondary" id="pauseBtn" disabled>Ⅱ 일시정지</button><button class="secondary" id="voiceBtn">🔊 음성 ON</button><button class="secondary" id="reRouteBtn" disabled>↻ 경로 재탐색</button></div>
+<div class="status" id="status">앱을 불러오는 중입니다...</div>
+</aside>
+</main>
+<nav class="bottom-nav">
+  <div class="bottom-left">
+    <div class="clock" id="navClock">--:--:--</div>
+    <div class="bottom-volume"><span>🔉</span><input id="volumeSlider" type="range" min="0" max="100" value="75" aria-label="음량"><b id="volumeValue">75%</b></div>
+  </div>
+  <button class="roadgo-menu-btn" id="roadgoMenuBtn"><span class="roadgo-mark">ROAD<b>GO</b></span><small>MENU ☰</small></button>
+</nav>
+<div class="menu-panel roadgo-menu-panel" id="roadgoMenuPanel">
+  <h3>ROADGO 메뉴</h3>
+  <button class="secondary" id="menuSettingsBtn">⚙ 설정</button>
+  <button class="secondary" id="menuRouteBtn">➤ 경로</button>
+  <button class="secondary" id="menuGpsBtn">⌖ GPS 연결</button>
+  <button class="danger" id="menuEndBtn">■ 네비 종료</button>
+</div>
+<div class="menu-panel" id="routePanel">
+  <h3>경로 관리</h3>
+  <p id="routePanelText">검색한 경로가 없습니다. 목적지를 검색해 주세요.</p>
+  <div class="panel-actions">
+    <button class="secondary" id="routePanelClose">닫기</button>
+    <button class="danger" id="endNavigationBtn">■ 안내 종료</button>
+  </div>
+</div>
+<div class="menu-panel" id="settingsPanel">
+  <h3>내비게이션 설정</h3>
+  <div class="panel-actions"><button class="secondary" id="settingsVoiceBtn">🔊 음성 안내 ON</button><button class="secondary" id="settingsFollowBtn">⌖ 자동 따라가기 ON</button></div>
+  <button class="secondary" id="settingsClose">닫기</button>
+</div>
+
+<div class="boot" id="boot"><div><div class="boot-logo">ROAD<b>GO</b></div><div class="boot-sub">3D INTELLIGENT NAVIGATION</div><div class="boot-bar"><i></i></div><div class="boot-sub" id="bootMessage">NAVIGATION SYSTEM LOADING...</div><button id="bootStartBtn" style="margin-top:18px;background:#49e0b3;color:#062016">소리가 안 나면 터치</button></div></div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-rotate@0.6.2/dist/leaflet-rotate.js"></script>
+<script>
+let navigationStarted=false;
+let map, gpsPos=null, watchId=null, gpsMarker=null, routes=[], chosen=0, routeLine=null, carMarker=null, running=false, paused=false, voiceOn=true, simProgress=0, simTimer=null, simSpeed=60, routeCoords=[], cumulative=[], totalMeters=0, stepList=[], lastStep=-1, follow=true, audioReady=false, audioCtx=null, masterGain=null, masterVolume=.75, speedLimitSegments=[], currentSpeedLimit=null, speedWarningActive=false, speedLimitRequestId=0;
+const $=id=>document.getElementById(id);
+function status(t){$('status').textContent=t}
+function setGpsState(t){const el=$('gpsState');if(el)el.textContent=t;}
+// Android WebView 음성 안내: 지원 여부를 확인하고 한국어 음성을 선택합니다.
+let speechReady=false;
+function speak(message){
+ if(!voiceOn)return false;
+ const synth=window.speechSynthesis;
+ if(!synth || typeof window.SpeechSynthesisUtterance!=='function'){
+  $('maneuverSub').textContent='이 APK의 WebView에서 음성 엔진을 지원하지 않습니다 · 화면 안내 사용';
+  return false;
+ }
+ try{
+  const utterance=new SpeechSynthesisUtterance(String(message||''));
+  utterance.lang='ko-KR';utterance.rate=0.88;utterance.pitch=1;utterance.volume=1;
+  const voices=synth.getVoices?synth.getVoices():[];
+  const korean=voices.find(v=>(v.lang||'').toLowerCase()==='ko-kr')||voices.find(v=>(v.lang||'').toLowerCase().startsWith('ko'));
+  if(korean)utterance.voice=korean;
+  utterance.onerror=(ev)=>{$('maneuverSub').textContent='음성 출력 실패 · Android 한국어 TTS 확인';console.warn('TTS error',ev);};
+  if(synth.paused)synth.resume();
+  synth.speak(utterance);
+  return true;
+ }catch(err){console.warn('ROADGO TTS error',err);$('maneuverSub').textContent='음성 출력 실패 · 화면 안내 사용';return false;}
+}
+if(window.speechSynthesis){window.speechSynthesis.onvoiceschanged=()=>{speechReady=window.speechSynthesis.getVoices().length>0;};}
+function ensureAudio(){
+  if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)();masterGain=audioCtx.createGain();masterGain.gain.value=masterVolume;masterGain.connect(audioCtx.destination);}
+  if(audioCtx.state==='suspended')return audioCtx.resume();
+  return Promise.resolve();
+}
+function playTone(freq,start,duration,peak=.16,type='sine'){
+  if(!audioCtx||!masterGain)return;
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type=type;o.frequency.value=freq;
+  g.gain.setValueAtTime(.0001,start);
+  g.gain.exponentialRampToValueAtTime(Math.max(.0002,peak),start+.025);
+  g.gain.exponentialRampToValueAtTime(.0001,start+duration);
+  o.connect(g);g.connect(masterGain);o.start(start);o.stop(start+duration+.02);
+}
+function bootChime(){
+  return ensureAudio().then(()=>{
+    if(!audioCtx || audioCtx.state!=='running'){audioReady=false;return false;}
+    const t=audioCtx.currentTime;
+    [523,659,784,988].forEach((f,i)=>playTone(f,t+i*.14,.14,.19));
+    audioReady=true;return true;
+  }).catch(err=>{audioReady=false;console.warn('ROADGO audio unlock failed',err);return false;});
+}
+function dingChime(){
+  return ensureAudio().then(()=>{
+    if(!audioCtx || audioCtx.state!=='running')return false;
+    const t=audioCtx.currentTime;
+    playTone(880,t,.12,.20);playTone(1175,t+.13,.18,.18);return true;
+  }).catch(err=>{console.warn('ROADGO chime failed',err);return false;});
+}
+function setVolume(v){
+  masterVolume=Math.max(0,Math.min(1,v/100));
+  if(masterGain)masterGain.gain.setTargetAtTime(masterVolume,audioCtx.currentTime,.03);
+  $('volumeValue').textContent=Math.round(masterVolume*100)+'%';
+}
+function initMap(){if(!window.L){status('지도 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.');$('maneuverText').textContent='지도 연결 실패';return}
+map=L.map('map',{zoomControl:false,rotate:!!(L.Map&&L.Map.prototype.setBearing),bearing:0,rotateControl:false}).setView([36.8065,127.1522],13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+carMarker=L.marker([36.8065,127.1522],{icon:L.divIcon({className:'',html:'<div id="carArrow" style="font-size:34px;color:#e34c35;text-shadow:0 1px 4px white;transform:rotate(0deg)">▲</div>',iconSize:[36,36],iconAnchor:[18,18]})}).addTo(map);
+gpsMarker=L.circleMarker([36.8065,127.1522],{radius:8,color:'#fff',weight:3,fillColor:'#268cff',fillOpacity:1}).addTo(map);gpsMarker.setOpacity(0);gpsMarker.setStyle({opacity:0,fillOpacity:0});
+$('maneuverText').textContent='목적지를 검색하세요';$('maneuverSub').textContent='GPS 또는 출발지를 설정할 수 있습니다';status('내비게이션 준비 완료. 출발지와 목적지를 입력하세요.');}
+function updateClock(){const d=new Date();$('navClock').textContent=[d.getHours(),d.getMinutes(),d.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');}
+function boot(){
+  updateClock();setInterval(updateClock,1000);
+  initMap();
+  $('systemState') && ($('systemState').textContent='● 준비 완료');
+  $('bootMessage').textContent='READY';
+  // Attempt automatic playback on startup. If Chrome blocks autoplay, retry on the first interaction.
+  bootChime();
+  $('boot').classList.add('hide');
+  status('ROADGO 3D NAVI가 준비되었습니다. GPS 연결을 시도합니다...');
+  autoConnectGPS();
+}
+$('bootStartBtn').onclick=()=>{bootChime();$('boot').classList.add('hide');status('ROADGO 3D NAVI가 준비되었습니다.');};
+function autoConnectGPS(){
+  if(!navigator.geolocation){
+    setGpsState('위치 API 차단');
+    status('이 브라우저에서 위치 기능을 사용할 수 없습니다. HTTPS 주소로 접속해 주세요.');
+    return;
+  }
+  setGpsState('GPS 자동 연결 중');
+  navigator.geolocation.getCurrentPosition(gpsSuccess,gpsError,
+    {enableHighAccuracy:true,timeout:25000,maximumAge:10000});
+  // Keep the live position updated like a real navigation app.
+  if(watchId===null){
+    watchId=navigator.geolocation.watchPosition(gpsSuccess,gpsError,
+      {enableHighAccuracy:true,timeout:30000,maximumAge:3000});
+  }
+}
+function unlockAudioOnFirstInteraction(){
+  // Autoplay가 차단된 경우에도 첫 사용자 터치에서 AudioContext를 확실히 재개합니다.
+  bootChime();
+}
+document.addEventListener('pointerdown',unlockAudioOnFirstInteraction,{once:true,capture:true});
+function geocode(q){return fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q='+encodeURIComponent(q)).then(r=>{if(!r.ok)throw Error('검색 서버 응답 오류');return r.json()})}
+async function getOrigin(){if(gpsPos)return [gpsPos.lat,gpsPos.lon];let q=$('origin').value.trim();if(!q||q==='현재 위치')throw Error('GPS 버튼을 눌러 현재 위치를 받거나 출발지를 주소로 입력해 주세요.');let a=await geocode(q);if(!a.length)throw Error('출발지를 찾지 못했습니다.');return [+a[0].lat,+a[0].lon]}
+async function searchRoutes(){let dest=$('destination').value.trim();if(!dest){status('목적지를 입력해 주세요.');return} $('searchBtn').disabled=true;status('목적지를 검색하고 실제 도로 경로를 계산하고 있습니다...');
+try{let [start,ends]=await Promise.all([getOrigin(),geocode(dest)]);if(!ends.length)throw Error('목적지를 찾지 못했습니다. 다른 검색어를 입력해 주세요.');let end=[+ends[0].lat,+ends[0].lon];
+let url=`https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson&steps=true&alternatives=3`;
+let res=await fetch(url);if(!res.ok)throw Error('경로 서버에 연결할 수 없습니다.');let data=await res.json();if(data.code!=='Ok'||!data.routes?.length)throw Error('경로를 찾지 못했습니다.');
+routes=data.routes.slice(0,3);$('routeList').innerHTML='';
+routes.forEach((r,i)=>{let b=document.createElement('button');b.className='route'+(i===0?' selected':'');b.innerHTML=`<span><strong>${['① 추천 경로','② 대안 경로','③ 대안 경로'][i]}</strong><small>${i===0?'기본 안내':`경로 대안 ${i}`}</small></span><em>${(r.distance/1000).toFixed(1)} km · ${Math.round(r.duration/60)}분</em>`;b.onclick=()=>selectRoute(i);$('routeList').appendChild(b)});
+selectRoute(0);$('startBtn').disabled=false;$('reRouteBtn').disabled=false;status(`'${dest}' 실제 도로 경로 ${routes.length}개를 찾았습니다. 경로를 선택하고 안내를 시작하세요.`);
+}catch(e){status(e.message+' (인터넷 연결이 필요합니다.)')}finally{$('searchBtn').disabled=false}}
+function parseMaxspeed(raw){
+ if(!raw)return null;
+ const value=String(raw).trim().toLowerCase();
+ if(['signals','variable','national','none','walk'].includes(value))return null;
+ const match=value.match(/\d+(?:\.\d+)?/);
+ if(!match)return null;
+ let n=Number(match[0]);
+ if(value.includes('mph'))n=Math.round(n*1.60934);
+ return n>0&&n<200?Math.round(n):null;
+}
+async function loadSpeedLimits(coords){
+ const request=++speedLimitRequestId;
+ speedLimitSegments=[];currentSpeedLimit=null;speedWarningActive=false;
+ $('speedLimitVal').textContent='--';$('speedLimitState').textContent='제한속도 확인 중';$('speedAlert').classList.remove('show');
+ if(!coords||coords.length<2){$('speedLimitState').textContent='경로 정보 없음';return;}
+ const count=Math.min(6,Math.max(3,Math.ceil(coords.length/120)));
+ const samples=[];for(let i=0;i<count;i++){const idx=Math.round(i*(coords.length-1)/(count-1));samples.push(coords[idx]);}
+ const clauses=samples.map(([lat,lon])=>`way["highway"]["maxspeed"](around:100,${lat},${lon});`).join('');
+ const query=`[out:json][timeout:20];(${clauses});out tags geom;`;
+ const endpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.nchc.org.tw/api/interpreter'];
+ let lastError=null;
+ for(const endpoint of endpoints){
+  if(request!==speedLimitRequestId)return;
+  for(const method of ['GET','POST']){
+   try{
+    const controller=('AbortController' in window)?new AbortController():null;
+    const timer=controller?setTimeout(()=>controller.abort(),14000):null;
+    let response;
+    try{
+     if(method==='POST'){
+      response=await fetch(endpoint,controller?{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'data='+encodeURIComponent(query),signal:controller.signal}:{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'data='+encodeURIComponent(query)});
+     }else{
+      response=await fetch(endpoint+'?data='+encodeURIComponent(query),controller?{method:'GET',signal:controller.signal}:{method:'GET'});
+     }
+    }finally{if(timer!==null)clearTimeout(timer);}
+    if(!response.ok)throw new Error(method+' '+response.status);
+    const data=await response.json();if(request!==speedLimitRequestId)return;
+    const found=(data.elements||[]).filter(el=>el.tags&&el.tags.maxspeed&&el.geometry&&el.geometry.length>1).map(el=>({limit:parseMaxspeed(el.tags.maxspeed),geometry:el.geometry.map(pt=>[Number(pt.lat),Number(pt.lon)])})).filter(el=>el.limit&&el.geometry.every(pt=>Number.isFinite(pt[0])&&Number.isFinite(pt[1])));
+    speedLimitSegments=found;$('speedLimitState').textContent=found.length?'OSM 제한속도 데이터 · 누락 가능':'도로 제한속도 미등록 · 표지판 확인';updateSpeedLimitAt(coords[0]);return;
+   }catch(err){lastError=err;}
+  }
+ }
+ if(request!==speedLimitRequestId)return;
+ $('speedLimitVal').textContent='--';$('speedLimitState').textContent='속도제한 서버 접속 실패 · '+(lastError&&lastError.message?lastError.message:'응답 오류');
+ console.warn('ROADGO maxspeed lookup failed',lastError);
+}
+function distanceToSegmentMeters(point,a,b){
+ // 위경도를 해당 지점 주변의 평면 좌표(m)로 바꿔 선분까지의 최단거리를 계산합니다.
+ const rad=Math.PI/180,lat0=point[0]*rad;
+ const project=p=>[
+  (p[1]-point[1])*rad*6371000*Math.cos(lat0),
+  (p[0]-point[0])*rad*6371000
+ ];
+ const A=project(a),B=project(b);
+ const dx=B[0]-A[0],dy=B[1]-A[1];
+ const len2=dx*dx+dy*dy;
+ const t=len2?Math.max(0,Math.min(1,-(A[0]*dx+A[1]*dy)/len2)):0;
+ return Math.hypot(A[0]+t*dx,A[1]+t*dy);
+}
+function updateSpeedLimitAt(point){
+ if(!point||!speedLimitSegments.length){currentSpeedLimit=null;$('speedLimitVal').textContent='--';return;}
+ let best=null,bestDistance=Infinity;
+ for(const way of speedLimitSegments){
+  for(let i=1;i<way.geometry.length;i++){
+   const d=distanceToSegmentMeters(point,way.geometry[i-1],way.geometry[i]);
+   if(d<bestDistance){bestDistance=d;best=way.limit;}
+  }
+ }
+ currentSpeedLimit=bestDistance<=45?best:null;
+ $('speedLimitVal').textContent=currentSpeedLimit?currentSpeedLimit+' km/h':'--';
+ if(!currentSpeedLimit)$('speedLimitState').textContent='주변 제한속도 태그 없음 · 표지판 확인';
+}
+function checkSpeedWarning(currentSpeed=simSpeed){
+ const over=currentSpeedLimit!==null&&currentSpeed>currentSpeedLimit+3;
+ if(over&&!speedWarningActive){
+  speedWarningActive=true;$('speedAlert').textContent=`⚠️ 제한속도 ${currentSpeedLimit} km/h 초과! 현재 ${currentSpeed} km/h`;$('speedAlert').classList.add('show');
+  dingChime().then(()=>speak(`주의. 제한속도 시속 ${currentSpeedLimit}킬로미터를 초과했습니다.`));
+ }else if(!over&&speedWarningActive){speedWarningActive=false;$('speedAlert').classList.remove('show');}
+ else if(over){$('speedAlert').textContent=`⚠️ 제한속도 ${currentSpeedLimit} km/h 초과! 현재 ${currentSpeed} km/h`;}
+}
+function selectRoute(i){chosen=i;document.querySelectorAll('.route').forEach((b,n)=>b.classList.toggle('selected',n===i));let r=routes[i];if(!r)return;stopSim();routeCoords=r.geometry.coordinates.map(c=>[c[1],c[0]]);loadSpeedLimits(routeCoords);cumulative=[0];totalMeters=0;for(let j=1;j<routeCoords.length;j++){totalMeters+=map.distance(routeCoords[j-1],routeCoords[j]);cumulative.push(totalMeters)}
+stepList=[];r.legs.forEach(l=>l.steps.forEach(st=>{if(st.maneuver){const loc=[st.maneuver.location[1],st.maneuver.location[0]];let nearest=0,nearDist=Infinity;for(let k=0;k<routeCoords.length;k++){const d=map.distance(loc,routeCoords[k]);if(d<nearDist){nearDist=d;nearest=k;}}stepList.push({distance:st.distance,location:loc,type:st.maneuver.type,modifier:st.maneuver.modifier,name:st.name||'',progress:cumulative[nearest]||0});}}));stepList.sort((a,b)=>a.progress-b.progress);simProgress=0;lastStep=-1;
+if(routeLine)map.removeLayer(routeLine);routeLine=L.polyline(routeCoords,{color:'#ef5b36',weight:8,opacity:.92,lineCap:'round'}).addTo(map);map.fitBounds(routeLine.getBounds(),{padding:[55,55]});
+$('distanceVal').textContent=(r.distance/1000).toFixed(1);$('etaVal').textContent=Math.round(r.duration/60)+'분';$('progressFill').style.width='0%';navigationStarted=false;$('mockDriveBtn').style.display='none';$('startBtn').disabled=false;$('maneuverText').textContent='경로 선택 완료';$('maneuverSub').textContent=`${(r.distance/1000).toFixed(1)}km · 예상 ${Math.round(r.duration/60)}분`;status('경로를 선택했습니다. 안내 시작을 누르세요.');$('routePanelText').textContent=`선택 경로 ${i+1} · ${(r.distance/1000).toFixed(1)}km · 안내 대기 중`;}
+function getPointAt(m){
+ if(!routeCoords.length)return null;
+ if(routeCoords.length===1||m<=0)return routeCoords[0];
+ if(m>=totalMeters)return routeCoords[routeCoords.length-1];
+ let idx=0;
+ while(idx<cumulative.length-2 && cumulative[idx+1]<m)idx++;
+ const a=routeCoords[idx],b=routeCoords[idx+1];
+ const span=cumulative[idx+1]-cumulative[idx];
+ const t=span>0?Math.max(0,Math.min(1,(m-cumulative[idx])/span)):0;
+ return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+}
+function bearing(a,b){let r=Math.PI/180,y=Math.sin((b[1]-a[1])*r)*Math.cos(b[0]*r),x=Math.cos(a[0]*r)*Math.sin(b[0]*r)-Math.sin(a[0]*r)*Math.cos(b[0]*r)*Math.cos((b[1]-a[1])*r);return (Math.atan2(y,x)*180/Math.PI+360)%360}
+function turnAction(st){const m=st.modifier||'';if(st.type==='arrive')return '목적지에 도착합니다';if(st.type==='roundabout'||st.type==='rotary')return '회전교차로에서 '+(m.includes('right')?'오른쪽':m.includes('left')?'왼쪽':'안내 방향으로')+' 진행하세요';if(st.type==='merge')return '합류하세요';if(st.type==='fork')return '갈림길에서 '+(m.includes('right')?'오른쪽':m.includes('left')?'왼쪽':'안내 방향으로')+' 진행하세요';if(m.includes('uturn'))return '유턴하세요';if(m.includes('right'))return '우회전하세요';if(m.includes('left'))return '좌회전하세요';if(m.includes('straight'))return '직진하세요';if(st.type==='turn')return '방향을 전환하세요';return '직진하세요'}
+function instruction(st,remaining){const action=turnAction(st);if(st.type==='arrive')return action;const meters=Math.max(0,Math.round(remaining/10)*10);if(meters>=1000)return `${(meters/1000).toFixed(1)}킬로미터 앞에서 ${action}`;if(meters>=80)return `잠시 후 ${meters}미터 앞에서 ${action}`;return `곧 ${action}`}
+let simLastTickAt=0,simFrameCount=0,simLastUiUpdate=0;
+function beginSim(){
+ if(!routes.length||!routeCoords.length||!cumulative.length||totalMeters<=0){status('먼저 목적지를 검색하고 경로를 선택해 주세요.');return;}
+ if(!map||!carMarker){status('지도 또는 차량 표시를 준비하지 못했습니다. 페이지를 새로고침해 주세요.');return;}
+ if(simProgress>=totalMeters){simProgress=0;lastStep=-1;}
+ // 안내 시작 시 자동 따라가기를 다시 켜고 차량의 출발 위치로 화면을 이동합니다.
+ follow=true;
+ const firstPoint=getPointAt(simProgress);
+ if(!firstPoint){status('경로 좌표를 읽지 못했습니다. 경로를 다시 검색해 주세요.');return;}
+ carMarker.setLatLng(firstPoint);
+ if(carMarker.setZIndexOffset)carMarker.setZIndexOffset(1000);
+ map.invalidateSize(false);
+ map.setView(firstPoint,Math.max(16,map.getZoom()),{animate:false});
+ running=true;paused=false;simFrameCount=0;
+ $('pauseBtn').disabled=false;$('pauseBtn').textContent='Ⅱ 일시정지';$('startBtn').disabled=true;$('mockDriveBtn').disabled=true;
+ $('routePanelText').textContent='모의 주행 시작 · 차량 위치로 화면 이동 완료';
+ status('모의 주행을 시작합니다. 차량 위치를 따라갑니다.');
+ if(simTimer){clearInterval(simTimer);clearTimeout(simTimer);simTimer=null;}
+ simLastTickAt=Date.now();simLastUiUpdate=0;
+ try{if(window.speechSynthesis&&window.speechSynthesis.getVoices)window.speechSynthesis.getVoices();}catch(_){}
+ // 음성 API가 없는 WebView에서도 차량 이동 루프는 반드시 시작합니다.
+ tick();
+ if(running)simTimer=setInterval(tick,100);
+ try{if(window.speechSynthesis){window.speechSynthesis.cancel();window.speechSynthesis.resume();}speak('안내를 시작합니다. 다음 안내까지 직진하세요.');}catch(err){console.warn('ROADGO start voice skipped',err);}
+}
+function stopSim(returnToGPS=true){
+ running=false;
+ if(simTimer){clearInterval(simTimer);clearTimeout(simTimer);simTimer=null;}
+ if(returnToGPS&&gpsPos&&carMarker){carMarker.setLatLng([gpsPos.lat,gpsPos.lon]);if(map&&typeof map.resetNorth==='function')map.resetNorth({animate:false});if(follow)map.setView([gpsPos.lat,gpsPos.lon],Math.max(map.getZoom(),16),{animate:false});}
+}
+function tick(){
+ if(!running)return;
+ try{
+  const now=Date.now();
+  const elapsed=Math.max(.05,Math.min(.5,(now-(simLastTickAt||now))/1000));
+  simLastTickAt=now;
+  const speed=Math.max(1,Number(simSpeed)||60);
+  const delta=speed*1000/3600*elapsed;
+  simProgress=Math.min(totalMeters,simProgress+delta);
+  const progress=totalMeters>0?simProgress/totalMeters:1;
+  const pt=getPointAt(simProgress);
+  if(!pt){stopSim(false);status('차량 위치 계산 실패 · 경로를 다시 검색해 주세요.');return;}
+  carMarker.setLatLng(pt);
+  updateSpeedLimitAt(pt);checkSpeedWarning(speed);
+  const next=getPointAt(Math.min(totalMeters,simProgress+15))||pt;
+  const el=document.getElementById('carArrow');
+  const heading=bearing(pt,next);
+  if(el)el.style.transform='rotate(0deg)';
+  if(map&&typeof map.setBearing==='function')map.setBearing((360-heading)%360);
+  if(follow)map.panTo(pt,{animate:false});
+  simFrameCount++;
+  if(now-simLastUiUpdate>=200||simProgress>=totalMeters){
+   simLastUiUpdate=now;
+   $('speedVal').textContent=String(speed);
+   $('distanceVal').textContent=((totalMeters-simProgress)/1000).toFixed(1);
+   const remaining=totalMeters-simProgress;
+   $('etaVal').textContent=remaining<5?'도착':Math.ceil(remaining/(speed*1000/3600)/60)+'분';
+   $('progressFill').style.width=(progress*100)+'%';
+   $('routePanelText').textContent=`모의 주행 중 · ${Math.round(progress*100)}% · ${Math.round(simProgress)}m 이동 · 갱신 ${simFrameCount}`;
+   status(`모의 주행 중 · ${Math.round(simProgress)}m 이동 · ${speed}km/h`);
+  }
+  const upcoming=stepList.findIndex((step,i)=>i>lastStep&&step.type!=='depart'&&step.progress>=simProgress&&step.progress-simProgress<=Math.max(700,speed*15));
+  if(upcoming>=0){lastStep=upcoming;const step=stepList[upcoming],remaining=Math.max(0,step.progress-simProgress),txt=instruction(step,remaining);$('maneuverText').textContent=txt;$('maneuverSub').textContent=step.name?`${step.name} · 다음 안내 지점`:'경로를 따라 이동하세요';$('maneuverArrow').textContent=step.modifier&&step.modifier.includes('left')?'↰':step.modifier&&step.modifier.includes('right')?'↱':'➤';dingChime().then(()=>speak(txt));}
+  else if(lastStep<0){$('maneuverText').textContent='경로를 따라 직진하세요';$('maneuverSub').textContent='다음 안내 지점까지 직진';}
+  else if(stepList[lastStep]&&stepList[lastStep].type!=='arrive'){$('maneuverText').textContent='다음 안내까지 직진하세요';$('maneuverSub').textContent=stepList[lastStep].name?`${stepList[lastStep].name} 방향으로 계속 이동`:'경로를 따라 이동하세요';}
+  if(progress>=1){
+   stopSim(false);$('speedAlert').classList.remove('show');speedWarningActive=false;
+   $('speedVal').textContent='0';$('maneuverArrow').textContent='🏁';$('maneuverText').textContent='목적지에 도착했습니다';$('maneuverSub').textContent='안내를 종료합니다';
+   $('startBtn').disabled=false;$('mockDriveBtn').disabled=false;$('pauseBtn').disabled=true;status('목적지에 도착했습니다.');speak('목적지에 도착했습니다.');return;
+  }
+ }catch(err){
+  stopSim(false);
+  status('모의 주행 오류: '+(err&&err.message?err.message:String(err)));
+  console.error('ROADGO simulation error',err);
+ }
+}
+$('searchBtn').onclick=searchRoutes;$('destination').addEventListener('keydown',e=>{if(e.key==='Enter')searchRoutes()});$('origin').addEventListener('keydown',e=>{if(e.key==='Enter')searchRoutes()});
+function gpsSuccess(pos){
+ gpsPos={lat:pos.coords.latitude,lon:pos.coords.longitude};
+ $('origin').value='현재 위치';setGpsState('GPS 연결됨');
+ if(map){
+   const here=[gpsPos.lat,gpsPos.lon];
+   if(gpsMarker){gpsMarker.setLatLng(here);gpsMarker.setStyle({opacity:1,fillOpacity:1});}
+   // While simulating, never let live GPS overwrite the simulated vehicle.
+   if(!running){if(carMarker)carMarker.setLatLng(here);if(follow)map.setView(here,Math.max(map.getZoom(),16),{animate:true});updateSpeedLimitAt(here);if(Number.isFinite(pos.coords.speed)&&pos.coords.speed>=0){const liveSpeed=Math.round(pos.coords.speed*3.6);$('speedVal').textContent=liveSpeed;checkSpeedWarning(liveSpeed);}}
+ }
+ status(`GPS 연결 완료 · 정확도 약 ${Math.round(pos.coords.accuracy)}m${running?' · 모의 주행 중에는 실제 위치 추적을 잠시 분리합니다.':''}`);
+}
+function gpsError(err){
+ let code=Number(err && err.code);
+ let label=code===1?'권한 거부 (1)':code===2?'위치 사용 불가 (2)':code===3?'시간 초과 (3)':'알 수 없는 오류';
+ setGpsState(label);
+ let msg=code===1
+ ?'GPS 권한이 거부되었습니다. Android 설정 → 앱 → Chrome → 권한 → 위치에서 허용하고, Chrome 사이트 설정에서도 위치를 허용해 주세요.'
+ :code===2
+ ?'기기에서 위치를 확인하지 못했습니다. 휴대폰 위치 서비스를 켜고 Wi-Fi 또는 모바일 데이터를 활성화한 뒤 다시 시도해 주세요.'
+ :code===3
+ ?'위치 응답 시간이 초과됐습니다. 실외나 창가에서 다시 시도하고, 휴대폰 위치 서비스를 켜 주세요.'
+ :'브라우저가 위치를 가져오지 못했습니다. Chrome 권한과 기기 위치 서비스를 확인해 주세요.';
+ if(!window.isSecureContext)msg+=' 현재 페이지가 보안 연결이 아닙니다. HTTPS 사이트에서 실행해야 GPS가 작동할 수 있습니다.';
+ else if(location.protocol==='file:')msg+=' 현재 로컬 HTML 파일로 실행 중입니다. Chrome에서 로컬 파일 위치 권한이 제한될 수 있으므로 HTTPS로 호스팅해 다시 테스트해 주세요.';
+ if($('gpsState'))$('gpsState').title='Geolocation error code: '+code;
+ status(msg);
+}
+$('gpsBtn').onclick=()=>{
+ if(!navigator.geolocation){setGpsState('위치 API 차단');status('Chrome이 이 페이지에서 위치 API를 제공하지 않습니다. HTTPS 웹 주소로 실행해 주세요. 현재 주소: '+location.protocol+' 보안 연결: '+(window.isSecureContext?'예':'아니요'));return;}
+ setGpsState('GPS 확인 중');status('Chrome 위치 권한을 확인하고 있습니다. 잠시 기다려 주세요...');
+ const opts={enableHighAccuracy:false,timeout:25000,maximumAge:0};
+ navigator.geolocation.getCurrentPosition(gpsSuccess,err=>{
+   if(err.code===1){gpsError(err);return;}
+   status('일반 위치 확인이 지연됩니다. GPS 정밀 위치로 다시 시도합니다...');
+   navigator.geolocation.getCurrentPosition(gpsSuccess,gpsError,{enableHighAccuracy:true,timeout:30000,maximumAge:5000});
+ },opts);
+};
+$('startBtn').onclick=()=>{if(!routes.length||!routeCoords.length){status('먼저 경로를 선택해 주세요.');return;}navigationStarted=true;$('mockDriveBtn').style.display='block';$('mockDriveBtn').disabled=false;$('startBtn').disabled=true;$('maneuverText').textContent='안내 준비 완료';$('maneuverSub').textContent='모의주행 버튼을 눌러 차량 이동을 시작하세요';status('안내를 시작했습니다. 모의주행 버튼이 표시됩니다.');speak('안내를 시작합니다. 모의 주행을 시작하려면 모의주행 버튼을 누르세요.');};
+$('mockDriveBtn').onclick=()=>{if(simProgress>=totalMeters){simProgress=0;lastStep=-1;}beginSim();};
+$('pauseBtn').onclick=()=>{if(running){stopSim(false);$('pauseBtn').textContent='▶ 계속';$('startBtn').disabled=true;$('mockDriveBtn').disabled=false;status('모의 주행을 일시정지했습니다.')}else if(routes.length){$('pauseBtn').textContent='Ⅱ 일시정지';beginSim()}};
+$('speedSlider').oninput=e=>{simSpeed=+e.target.value;$('speedSetting').textContent=simSpeed;if(running)$('speedVal').textContent=simSpeed;checkSpeedWarning()};
+$('voiceBtn').onclick=()=>{voiceOn=!voiceOn;$('voiceBtn').textContent=voiceOn?'🔊 음성 ON':'🔇 음성 OFF';$('settingsVoiceBtn').textContent=voiceOn?'🔊 음성 안내 ON':'🔇 음성 안내 OFF';if(!voiceOn&&speechSynthesis)speechSynthesis.cancel()};
+$('reRouteBtn').onclick=searchRoutes;$('zoomIn').onclick=()=>map?.zoomIn();$('zoomOut').onclick=()=>map?.zoomOut();$('followBtn').onclick=()=>{follow=true;if(carMarker)map.setView(carMarker.getLatLng(),Math.max(map.getZoom(),16),{animate:false});status('지도 자동 따라가기가 켜졌습니다.')};
+
+// 수동 지도 이동: 손가락을 왼쪽으로 밀면 지도는 오른쪽으로 이동하도록 반전.
+// 세로 화면에서 앱을 90도 회전해 보여주는 경우에는 화면 좌표를 지도 좌표로 변환.
+let panPointer=null;
+function screenDeltaToMap(dx,dy){
+ const portrait=window.matchMedia('(orientation: portrait)').matches;
+ return portrait ? [dy,-dx] : [dx,dy];
+}
+function attachDirectPan(){
+ const el=$('map');
+ el.addEventListener('pointerdown',e=>{
+   if(e.target.closest('.leaflet-control'))return;
+   panPointer={id:e.pointerId,x:e.clientX,y:e.clientY,moved:false};
+   try{el.setPointerCapture(e.pointerId)}catch(_){}
+   follow=false;
+ },{passive:true});
+ el.addEventListener('pointermove',e=>{
+   if(!panPointer||panPointer.id!==e.pointerId||!map)return;
+   const dx=e.clientX-panPointer.x,dy=e.clientY-panPointer.y;
+   if(Math.abs(dx)+Math.abs(dy)<1)return;
+   panPointer.moved=true;
+   const delta=screenDeltaToMap(dx,dy);
+   map.panBy([-delta[0],-delta[1]],{animate:false});
+   panPointer.x=e.clientX;panPointer.y=e.clientY;
+ },{passive:true});
+ const clear=()=>{panPointer=null};
+ el.addEventListener('pointerup',clear);el.addEventListener('pointercancel',clear);el.addEventListener('lostpointercapture',clear);
+}
+const originalInitMap=initMap;
+initMap=function(){originalInitMap();if(map){map.dragging.disable();attachDirectPan();}};
+function closePanels(){
+  ['routePanel','settingsPanel','roadgoMenuPanel'].forEach(id=>$(id).classList.remove('open'));
+  $('sidePanel').classList.remove('open');
+  document.querySelectorAll('.bottom-nav button').forEach(b=>b.classList.remove('active'));
+}
+function openPanel(id,btn){
+  closePanels();$(id).classList.add('open');btn.classList.add('active');
+}
+$('roadgoMenuBtn').onclick=()=>{
+  const panel=$('roadgoMenuPanel');
+  const willOpen=!panel.classList.contains('open');
+  closePanels();
+  if(willOpen){panel.classList.add('open');$('roadgoMenuBtn').classList.add('active');}
+};
+$('menuSettingsBtn').onclick=()=>openPanel('settingsPanel',$('roadgoMenuBtn'));
+$('menuRouteBtn').onclick=()=>{
+  closePanels();$('sidePanel').classList.add('open');$('roadgoMenuBtn').classList.remove('active');
+  status('경로 메뉴를 열었습니다. 출발지와 목적지를 설정하세요.');
+};
+$('menuGpsBtn').onclick=()=>{closePanels();$('gpsBtn').click();};
+$('menuEndBtn').onclick=()=>$('endNavigationBtn').click();
+$('routePanelClose').onclick=$('settingsClose').onclick=closePanels;
+$('volumeSlider').oninput=e=>setVolume(+e.target.value);
+$('settingsVoiceBtn').onclick=()=>{$('voiceBtn').click();$('settingsVoiceBtn').textContent=voiceOn?'🔊 음성 안내 ON':'🔇 음성 안내 OFF';};
+$('settingsFollowBtn').onclick=()=>{follow=!follow;$('settingsFollowBtn').textContent=follow?'⌖ 자동 따라가기 ON':'⌖ 자동 따라가기 OFF';if(follow&&carMarker)map.panTo(carMarker.getLatLng());};
+$('endNavigationBtn').onclick=()=>{
+  stopSim();speedLimitRequestId++;speedLimitSegments=[];currentSpeedLimit=null;speedWarningActive=false;$('speedLimitVal').textContent='--';$('speedLimitState').textContent='경로 선택 후 확인';$('speedAlert').classList.remove('show');routes=[];stepList=[];routeCoords=[];cumulative=[];totalMeters=0;simProgress=0;lastStep=-1;
+  if(routeLine){map.removeLayer(routeLine);routeLine=null;}
+  $('routeList').innerHTML='<div class="status">목적지를 검색하면 경로가 표시됩니다.</div>';
+  $('startBtn').disabled=true;$('mockDriveBtn').style.display='none';$('mockDriveBtn').disabled=false;$('pauseBtn').disabled=true;$('reRouteBtn').disabled=true;navigationStarted=false;
+  $('speedVal').textContent='0';$('distanceVal').textContent='--';$('etaVal').textContent='--';$('progressFill').style.width='0%';
+  $('maneuverArrow').textContent='➤';$('maneuverText').textContent='목적지를 검색하세요';$('maneuverSub').textContent='새로운 경로를 설정할 수 있습니다';
+  status('내비게이션 안내를 종료했습니다. 오디오 재생은 중단하지 않았습니다.');closePanels();
+};
+$('boot').addEventListener('pointerdown',()=>{ /* explicit boot button handles audio unlock */ });
+// Short UI click sound for buttons and menu controls.
+document.addEventListener('click',e=>{
+  const control=e.target.closest('button');
+  if(!control || control.disabled) return;
+  ensureAudio().then(()=>{
+    const t=audioCtx.currentTime;
+    playTone(720,t,.055,.075,'sine');
+  }).catch(()=>{});
+},true);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&gpsPos===null)autoConnectGPS();});
+window.addEventListener('online',()=>{if(routes.length&&routeCoords.length)loadSpeedLimits(routeCoords);});
+window.addEventListener('pagehide',()=>{if(watchId!==null&&navigator.geolocation)navigator.geolocation.clearWatch(watchId);});
+window.addEventListener('load',boot);
+</script>
+</body></html>
